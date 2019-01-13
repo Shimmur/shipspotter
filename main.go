@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -21,15 +22,14 @@ import (
 
 type Config struct {
 	Hostname    *string
-	Port        *string
 	Username    *string
 	DockerSock  *string
 	KeyPath     *string
-	RemotePort  *int
-	LocalPort   *int
+	Ports       *[]string
 	ImageName   *string
 	ContainerID *string
 	SSHKeyPath  *string
+	SSHPort     *string
 	ForwardEPMD *bool
 }
 
@@ -43,14 +43,13 @@ func configure() *Config {
 	keyPath := filepath.Join(homeDir, ".ssh", "id_rsa")
 
 	opts.Hostname = kingpin.Flag("hostname", "The remote hostname to connect to").Required().Short('h').String()
-	opts.Port = kingpin.Flag("port", "The remote port to connect to").Default("22").Short('p').String()
+	opts.Ports = kingpin.Flag("port", "The local:remote port to connect to. e.g. 8080:80").Default("8080:80").Short('p').Strings()
 	opts.Username = kingpin.Flag("username", "The ssh username on the remote host").Default(username).Short('l').String()
 	opts.DockerSock = kingpin.Flag("docker-sock", "The Docker socket address on the remote host").Default("unix:///var/run/docker.sock").Short('s').String()
 	opts.ImageName = kingpin.Flag("image-name", "The Docker image to match on for this application").Short('n').String()
 	opts.ContainerID = kingpin.Flag("container-id", "The Docker container ID to match for this application").Short('c').String()
-	opts.RemotePort = kingpin.Flag("remote-port", "The Container port to connect to").Default("80").Short('R').Int()
-	opts.LocalPort = kingpin.Flag("local-port", "The local port to listen on").Default("8080").Short('L').Int()
 	opts.SSHKeyPath = kingpin.Flag("ssh-key", "Path to the ssh private key to use").Default(keyPath).Short('i').String()
+	opts.SSHPort = kingpin.Flag("ssh-port", "Port to connect to ssh on the remote host").Default("22").Short('P').String()
 	opts.ForwardEPMD = kingpin.Flag("forward-epmd", "Shall we also forward the EPMD port?").Default("true").Short('e').Bool()
 	kingpin.Parse()
 
@@ -183,7 +182,14 @@ func findIPForContainer(client *docker.Client, cntnr *docker.APIContainers) (str
 	return ip, nil
 }
 
-func proxyPort(client *ssh.Client, localPort int, ip string, remotePort int) {
+func proxyPort(client *ssh.Client, ip string, port string) {
+	ports := strings.Split(port, ":")
+	localPort, err1 := strconv.Atoi(ports[0])
+	remotePort, err2 := strconv.Atoi(ports[1])
+	if err1 != nil || err2 != nil {
+		log.Fatal("Ports must be of the form <local>:<remote> where both are integers")
+	}
+
 	localAddr := &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: localPort}
 	remoteAddr := &net.TCPAddr{IP: net.ParseIP(ip), Port: remotePort}
 	proxy, err := NewTCPProxy(localAddr, remoteAddr, client)
@@ -215,7 +221,7 @@ func main() {
 	passphrase := readPassphrase(*config.SSHKeyPath)
 
 	client, err := connectWithKeys(
-		*config.Hostname+":"+*config.Port,
+		*config.Hostname+":"+*config.SSHPort,
 		*config.Username,
 		*config.SSHKeyPath,
 		passphrase,
@@ -228,8 +234,8 @@ func main() {
 	dialer := &sshDialer{
 		Client: client,
 	}
-	//		log.Fatalf("Error opening remote Docker socket: %s", err)
 
+	// Configure a new Docker client
 	dockerCli, err := docker.NewClient(*config.DockerSock)
 	if err != nil {
 		log.Fatalf("Unable to create new Docker client: %s", err)
@@ -256,10 +262,15 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	go proxyPort(client, *config.LocalPort, ip, *config.RemotePort)
+	log.Info("Forwarding ports:")
+	for _, port := range *config.Ports {
+		log.Infof(" - %s", port)
+		go proxyPort(client, ip, port)
+	}
+
 	if *config.ForwardEPMD {
 		log.Info("Forwarding EPMD on 4369")
-		go proxyPort(client, 4369, ip, 4369)
+		go proxyPort(client, ip, "4369:4369")
 	}
 
 	select {}
