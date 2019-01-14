@@ -49,6 +49,7 @@ func (proxy *TCPProxy) clientLoop(client *net.TCPConn, quit chan bool) {
 	var wg sync.WaitGroup
 	var broker = func(to, from net.Conn) {
 		io.Copy(to, from)
+		to.Close()
 		wg.Done()
 	}
 
@@ -77,6 +78,7 @@ func (proxy *TCPProxy) Run() {
 	defer close(quit)
 	for {
 		client, err := proxy.listener.Accept()
+		log.Debugf("Proxying connection to %v", proxy.backendAddr)
 		if err != nil {
 			log.Printf("Stopping proxy on tcp/%v for tcp/%v (%s)", proxy.frontendAddr, proxy.backendAddr, err)
 			return

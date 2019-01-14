@@ -21,16 +21,19 @@ import (
 )
 
 type Config struct {
-	Hostname    *string
-	Username    *string
-	DockerSock  *string
-	KeyPath     *string
-	Ports       *[]string
-	ImageName   *string
-	ContainerID *string
-	SSHKeyPath  *string
-	SSHPort     *string
-	ForwardEPMD *bool
+	Hostname     *string
+	Username     *string
+	DockerSock   *string
+	KeyPath      *string
+	Ports        *[]string
+	LocalAddress *string
+	ImageName    *string
+	ContainerID  *string
+	SSHKeyPath   *string
+	SSHPort      *string
+	ForwardEPMD  *bool
+
+	Debug *bool
 }
 
 // configure parses the passed command line options and populates the Config
@@ -44,6 +47,7 @@ func configure() *Config {
 
 	opts.Hostname = kingpin.Flag("hostname", "The remote hostname to connect to").Required().Short('h').String()
 	opts.Ports = kingpin.Flag("port", "The local:remote port to connect to. e.g. 8080:80").Default("8080:80").Short('p').Strings()
+	opts.LocalAddress = kingpin.Flag("local-address", "The local IP address to listen on").Default("127.0.0.1").Short('a').String()
 	opts.Username = kingpin.Flag("username", "The ssh username on the remote host").Default(username).Short('l').String()
 	opts.DockerSock = kingpin.Flag("docker-sock", "The Docker socket address on the remote host").Default("unix:///var/run/docker.sock").Short('s').String()
 	opts.ImageName = kingpin.Flag("image-name", "The Docker image to match on for this application").Short('n').String()
@@ -51,6 +55,7 @@ func configure() *Config {
 	opts.SSHKeyPath = kingpin.Flag("ssh-key", "Path to the ssh private key to use").Default(keyPath).Short('i').String()
 	opts.SSHPort = kingpin.Flag("ssh-port", "Port to connect to ssh on the remote host").Default("22").Short('P').String()
 	opts.ForwardEPMD = kingpin.Flag("forward-epmd", "Shall we also forward the EPMD port?").Default("true").Short('e').Bool()
+	opts.Debug = kingpin.Flag("debug", "Turn on debug logging").Default("false").Short('d').Bool()
 	kingpin.Parse()
 
 	// We have to have gotten at least one of these
@@ -118,7 +123,14 @@ type sshDialer struct {
 }
 
 func (d *sshDialer) Dial(ignored, socketPath string) (net.Conn, error) {
-	c, err := d.Client.Dial("unix", socketPath)
+	var proto string
+
+	if strings.HasPrefix(socketPath, "tcp") {
+		proto = "tcp"
+	} else {
+		proto = "unix"
+	}
+	c, err := d.Client.Dial(proto, socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("Dial error: %s", err)
 	}
@@ -182,7 +194,9 @@ func findIPForContainer(client *docker.Client, cntnr *docker.APIContainers) (str
 	return ip, nil
 }
 
-func proxyPort(client *ssh.Client, ip string, port string) {
+// proxyPort start up a listener and begins proxying all TCP requests
+// to the specified address and port.
+func proxyPort(client *ssh.Client, localAddress string, ip string, port string) {
 	ports := strings.Split(port, ":")
 	localPort, err1 := strconv.Atoi(ports[0])
 	remotePort, err2 := strconv.Atoi(ports[1])
@@ -190,7 +204,7 @@ func proxyPort(client *ssh.Client, ip string, port string) {
 		log.Fatal("Ports must be of the form <local>:<remote> where both are integers")
 	}
 
-	localAddr := &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: localPort}
+	localAddr := &net.TCPAddr{IP: net.ParseIP(localAddress), Port: localPort}
 	remoteAddr := &net.TCPAddr{IP: net.ParseIP(ip), Port: remotePort}
 	proxy, err := NewTCPProxy(localAddr, remoteAddr, client)
 
@@ -215,8 +229,28 @@ func readPassphrase(keyPath string) []byte {
 	return passphrase
 }
 
+func banner() {
+	banner := `
+     _     _                       _   _
+    | |   (_)                     | | | |
+ ___| |__  _ _ __  ___ _ __   ___ | |_| |_ ___ _ __
+/ __| '_ \| | '_ \/ __| '_ \ / _ \| __| __/ _ \ '__|
+\__ \ | | | | |_) \__ \ |_) | (_) | |_| ||  __/ |
+|___/_| |_|_| .__/|___/ .__/ \___/ \__|\__\___|_|
+            | |       | |
+            |_|       |_|
+`
+	fmt.Println(banner)
+}
+
 func main() {
 	config := configure()
+	banner()
+
+	if *config.Debug {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Turning on debug logging")
+	}
 
 	passphrase := readPassphrase(*config.SSHKeyPath)
 
@@ -265,12 +299,12 @@ func main() {
 	log.Info("Forwarding ports:")
 	for _, port := range *config.Ports {
 		log.Infof(" - %s", port)
-		go proxyPort(client, ip, port)
+		go proxyPort(client, *config.LocalAddress, ip, port)
 	}
 
 	if *config.ForwardEPMD {
 		log.Info("Forwarding EPMD on 4369")
-		go proxyPort(client, ip, "4369:4369")
+		go proxyPort(client, *config.LocalAddress, ip, "4369:4369")
 	}
 
 	select {}
