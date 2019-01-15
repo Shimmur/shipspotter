@@ -75,7 +75,6 @@ $ ./shipspotter -h docker1 -n elixir -p 9001:9001 -d -a 127.0.0.2
 DEBU[0000] Turning on debug logging
 INFO[0000] Found matching container:
 INFO[0000]  - id:    9b62e46debe1
-
 INFO[0000]  - image: elixir
 INFO[0000]  - name:  /thirsty_keller
 INFO[0000]  - up:    22h34m30.789978s
