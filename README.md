@@ -98,3 +98,11 @@ Requirements
 
 2. You must be using ssh key authentication, either with an agent or without.
    It would not be hard to add password auth.
+
+Utilities
+---------
+
+For some use cases it's helpful to add an aliased address locally. This is true
+when, for example, you need to connect an Erlang VM up to a remote container
+to do distribution or run remote Observer. There is an `alias.sh` script provided
+to do that, with support for macOS and Linux.
