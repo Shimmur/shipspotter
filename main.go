@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/crypto/ssh/agent"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -81,39 +82,6 @@ func decrypt(key []byte, passphrase []byte) []byte {
 		return pem.EncodeToMemory(&pem.Block{Type: block.Type, Bytes: der})
 	}
 	return key
-}
-
-// connectWithKeys connects to a remote SSH server using the supplied
-// key and passphrase.
-func connectWithKeys(hostAddr, username, keyPath string, passphrase []byte) (*ssh.Client, error) {
-	key, err := ioutil.ReadFile(keyPath)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read private key: %v", err)
-	}
-	key = decrypt(key, passphrase)
-
-	// Create the Signer for this private key.
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse private key: %v", err)
-	}
-
-	config := &ssh.ClientConfig{
-		User: username,
-		Auth: []ssh.AuthMethod{
-			// Use the PublicKeys method for remote authentication.
-			ssh.PublicKeys(signer),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
-
-	// Connect to the remote server and perform the SSH handshake.
-	client, err := ssh.Dial("tcp", hostAddr, config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect: %v", err)
-	}
-
-	return client, nil
 }
 
 // sshDialer is a wrapper to let the Docker client library make calls
@@ -243,28 +211,7 @@ func banner() {
 	fmt.Println(banner)
 }
 
-func main() {
-	config := configure()
-	banner()
-
-	if *config.Debug {
-		log.SetLevel(log.DebugLevel)
-		log.Debug("Turning on debug logging")
-	}
-
-	passphrase := readPassphrase(*config.SSHKeyPath)
-
-	client, err := connectWithKeys(
-		*config.Hostname+":"+*config.SSHPort,
-		*config.Username,
-		*config.SSHKeyPath,
-		passphrase,
-	)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	defer client.Close()
-
+func configureDockerClient(config *Config, client *ssh.Client) *docker.Client {
 	dialer := &sshDialer{
 		Client: client,
 	}
@@ -278,8 +225,116 @@ func main() {
 	// Override Dialer to use our SSH-proxied socket
 	dockerCli.Dialer = dialer
 
+	return dockerCli
+}
+
+func connectSSH(config *Config) *ssh.Client {
+	client, err := connectWithAgent(config)
+	if client == nil && err == nil {
+		client, err := connectWithKey(config)
+		if err != nil {
+			log.Fatalf("Failed ssh agent and RSA key auth: ", err)
+		}
+		return client
+	}
+
+	if err != nil {
+		log.Fatalf("Looks like ssh agent is available, but got error:", err)
+	}
+
+	return client
+}
+
+func connectWithAgent(config *Config) (*ssh.Client, error) {
+	socket := os.Getenv("SSH_AUTH_SOCK")
+	if len(socket) < 1 {
+		return nil, nil
+	}
+
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to talk to ssh agent: %s", err)
+	}
+
+	agentClient := agent.NewClient(conn)
+	sshConfig := &ssh.ClientConfig{
+		User: *config.Username,
+		Auth: []ssh.AuthMethod{
+			// Use a callback rather than PublicKeys
+			// so we only consult the agent once the remote server
+			// wants it.
+			ssh.PublicKeysCallback(agentClient.Signers),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	hostAddr := *config.Hostname+":"+*config.SSHPort
+
+	// Connect to the remote server and perform the SSH handshake.
+	client, err := ssh.Dial("tcp", hostAddr, sshConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect: %v", err)
+	}
+
+	return client, nil
+}
+
+//  connects to a remote SSH server using the supplied
+// key and passphrase.
+func connectWithKey(config *Config) (*ssh.Client, error) {
+	passphrase := readPassphrase(*config.SSHKeyPath)
+
+	key, err := ioutil.ReadFile(*config.SSHKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read private key: %v", err)
+	}
+	key = decrypt(key, passphrase)
+
+	// Create the Signer for this private key.
+	signer, err := ssh.ParsePrivateKey(key)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse private key: %v", err)
+	}
+
+	sshConfig := &ssh.ClientConfig{
+		User: *config.Username,
+		Auth: []ssh.AuthMethod{
+			// Use the PublicKeys method for remote authentication.
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	hostAddr := *config.Hostname+":"+*config.SSHPort
+
+	// Connect to the remote server and perform the SSH handshake.
+	client, err := ssh.Dial("tcp", hostAddr, sshConfig)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect: %v", err)
+	}
+
+	return client, nil
+}
+
+
+func main() {
+	config := configure()
+	banner()
+
+	if *config.Debug {
+		log.SetLevel(log.DebugLevel)
+		log.Debug("Turning on debug logging")
+	}
+
+	client := connectSSH(config)
+	defer client.Close()
+
+	// Configure the Docker client
+	dockerCli := configureDockerClient(config, client)
+
 	// Lookup a container by image name
 	var cntnr *docker.APIContainers
+	var err error
 	if len(*config.ImageName) > 0 {
 		cntnr, err = findContainerByImageName(dockerCli, *config.ImageName)
 	} else {
