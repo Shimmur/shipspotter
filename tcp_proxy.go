@@ -1,6 +1,6 @@
 package main
 
-// This is heavily derived from libnetwork:
+// This is heavily derived, and modified, from libnetwork:
 // https://github.com/docker/libnetwork/blob/master/cmd/proxy/tcp_proxy.go
 // Copyright 2015 Docker, inc. Code released under the Apache 2.0 license.
 
