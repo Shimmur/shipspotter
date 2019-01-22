@@ -1,17 +1,25 @@
 Shipspotter
 ===========
 
-A remote port forwarding for accessing services inside Docker containers.
-Private admin interface, JMX ports, or Erlang/Elixir distribution ports not
-open to the outside world? No problem.
+A remote port forwarding tool for accessing services inside Docker containers.
+Those private admin interfaces, JMX ports, or Erlang/Elixir distribution ports
+not open to the outside world? No problem.
 
-Shipspotter automates some of the workflow of connecting to a remote Docker
-host, finding the container you need to connect to, and then forwarding the
-ports to the appropriate container on the Docker bridge network.
+Shipspotter automates the the workflow of connecting to a remote Docker host,
+finding the container you need to connect to, and then forwarding the ports to
+the appropriate container on the Docker bridge network.
+
+**Example:** Nginx with no exposed ports, inside a remote Docker container.
+![Shipspotter demo](./assets/shipspotter.gif)
+
+Installation
+------------
+
+ * Binaries: [On the releases page](https://github.com/Shimmur/shipspotter/releases)
+ * From Source: `go get github.com/Shimmur/shipspotter`
 
 Basic Usage
 -----------
-
 ```
 ./shipspotter -h docker1 -n elixir -p 9001:9001 -p 7946:7946 -a 127.0.0.2
 ```
