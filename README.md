@@ -114,6 +114,30 @@ when, for example, you need to connect an Erlang VM up to a remote container
 to do distribution or run remote Observer. There is an `alias.sh` script provided
 to do that, with support for macOS and Linux.
 
+Elixir/Erlang Remote Observer
+-----------------------------
+
+One good use case for Shipspotter is connecting to a remote Erlang VM and
+running a remote observer process there. To do this you must:
+
+ * Set the remote node name to `<your process>@127.0.0.2` beforehand
+ * Run the `alias.sh` script from this distribution
+ * Start shipspotter:
+   ```
+   shipspotter -h docker1 -n <your image> -p 9001:9001 -d -a 127.0.0.2
+   ```
+ * Start a local `iex` session like:
+   ```
+   iex --name debug@127.0.0.1 --cookie <your cookie>
+   ```
+ * Then in the iex session:
+   ```
+   iex(1)> Node.connect :"<your process>@127.0.0.2"
+   true
+   ```
+   If you don't get `true` back, look for error output from shipspotter.
+ * Start Observer `:observer.start`
+
 Contributing
 ------------
 
