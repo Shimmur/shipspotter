@@ -136,7 +136,8 @@ running a remote observer process there. To do this you must:
    true
    ```
    If you don't get `true` back, look for error output from shipspotter.
- * Start Observer `:observer.start`
+ * Start Observer `:observer.start`. The select the remote node from the
+   menu.
 
 Contributing
 ------------
