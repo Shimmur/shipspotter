@@ -96,12 +96,14 @@ INFO[0000] Forwarding EPMD on 4369
 Requirements
 ------------
 
-1. You must have read access to the Docker Unix socker on the remote system
+1. You must have read access to the Docker Unix socket on the remote system
    with the user you are logging in with. This can usually be accomplished
    by adding the user to the `docker` group on most distros. **If you do not**
    you may also connect over TCP on the remote host, by specifying the
    `--docker-sock` option. Note that this requires Docker to be listening
-   on the non-SSL TCP port (usually on 127.0.0.1 only).
+   on the non-SSL TCP port (usually on 127.0.0.1 only). Specify TCP sockets
+   prefixed with `tcp://` according to the manner that Docker would normally
+   expect.
 
 2. You must be using ssh key authentication, either with an agent or without.
    It would not be hard to add password auth.
