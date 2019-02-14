@@ -5,7 +5,7 @@ A remote port forwarding tool for accessing services inside Docker containers.
 Those private admin interfaces, JMX ports, or Erlang/Elixir distribution ports
 not open to the outside world? No problem.
 
-Shipspotter automates the the workflow of connecting to a remote Docker host,
+Shipspotter automates the workflow of connecting to a remote Docker host,
 finding the container you need to connect to, and then forwarding the ports to
 the appropriate container on the Docker bridge network.
 
