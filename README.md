@@ -141,6 +141,35 @@ running a remote observer process there. To do this you must:
  * Start Observer `:observer.start`. The select the remote node from the
    menu.
 
+Elixir Remote Shell
+--------------------
+
+Another good use case for Shipspotter is connecting to a remote Elixir shell 
+so that you can run functions directly.
+
+ * Run `sudo ./alias.sh` in the directory where you downloaded it. 
+ * Start shipspotter:
+   ```
+   shipspotter -h <hostname> -n <service> -p 9001:9001 -d -a 127.0.0.2
+   ```
+    * Example values for `service` are `hermes` or `digits`. **NOTE** if you
+      have a different user ID on your local machine than you do on our
+      infrastructure, you will need to also supply `--username` or `-l` and provide
+      the correct user ID.
+ * Inspect the output to make sure that shipspotter has connected to the
+   correct container. A host may have more than one container. If not, use
+   the `-c` option to specify the exact container ID and remove the `-n`
+   option.
+ * Start a local `iex` session like:
+   ```
+   iex --name debug@127.0.0.1 --cookie <your cookie> --remsh "<service>@127.0.0.2"
+   ```
+     * In place of `<service>` substitute the name of the service. E.g. `digits`
+ * Then in the iex session:
+   ```
+   iex(<service>@127.0.0.2)1)> run the command you want
+   ```
+
 Contributing
 ------------
 
