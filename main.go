@@ -239,7 +239,7 @@ func connectSSH(config *Config) *ssh.Client {
 	}
 
 	if err != nil {
-		log.Fatalf("Looks like ssh agent is available, but got error:", err)
+		log.Fatalf("Looks like ssh agent is available, but got error: %s", err)
 	}
 
 	return client

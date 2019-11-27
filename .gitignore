@@ -1,2 +1,3 @@
 shipspotter
-vendor/
+shipspotter-darwin-amd64
+shipspotter-linux-amd64
