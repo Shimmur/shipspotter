@@ -178,7 +178,7 @@ func proxyPort(client *ssh.Client, localAddress string, ip string, port string) 
 
 	if err != nil {
 		// OK to log Fatal here, we want to do from both goroutines
-		log.Fatalf("Unable to start TCP proxy for %d -> %d: %s", localPort, remotePort, err)
+		log.Fatalf("Unable to start TCP proxy for %d -> %d: %s. HINT: Did you run ./alias.sh?", localPort, remotePort, err)
 	}
 
 	proxy.Run()
