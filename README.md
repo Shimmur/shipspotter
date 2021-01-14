@@ -170,6 +170,9 @@ so that you can run functions directly.
    iex(<service>@127.0.0.2)1)> run the command you want
    ```
 
+Note: If hitting tab to autocomplete crashes the remote shell, make sure that
+the local and remote versions of elixir and otp match.
+
 Contributing
 ------------
 
