@@ -1,0 +1,48 @@
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - env:
+    - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+    - amd64
+
+archives:
+  - replacements:
+      darwin: Darwin
+      linux: Linux
+      amd64: x86_64
+    files:
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+brews:
+  - name: shipspotter
+    tap:
+      owner: Shimmur
+      name: homebrew-tap
+    folder: Formula
+    description: "A remote port forwarding tool for accessing services inside Docker containers."
+
+    # Allows you to set a custom download strategy. As we use private repos
+    # we need to use a github token to download the file
+    download_strategy: CustomGitHubPrivateRepositoryReleaseDownloadStrategy 
+
+    # Allows you to add a custom require_relative at the top of the formula template
+    custom_require: "../custom_download_strategy.rb"
