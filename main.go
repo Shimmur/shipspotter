@@ -16,8 +16,8 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/terminal"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -233,7 +233,7 @@ func connectSSH(config *Config) *ssh.Client {
 	if client == nil && err == nil {
 		client, err := connectWithKey(config)
 		if err != nil {
-			log.Fatalf("Failed ssh agent and RSA key auth: ", err)
+			log.Fatalf("Failed ssh agent and RSA key auth: %s", err)
 		}
 		return client
 	}
@@ -268,7 +268,7 @@ func connectWithAgent(config *Config) (*ssh.Client, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	hostAddr := *config.Hostname+":"+*config.SSHPort
+	hostAddr := *config.Hostname + ":" + *config.SSHPort
 
 	// Connect to the remote server and perform the SSH handshake.
 	client, err := ssh.Dial("tcp", hostAddr, sshConfig)
@@ -305,7 +305,7 @@ func connectWithKey(config *Config) (*ssh.Client, error) {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	hostAddr := *config.Hostname+":"+*config.SSHPort
+	hostAddr := *config.Hostname + ":" + *config.SSHPort
 
 	// Connect to the remote server and perform the SSH handshake.
 	client, err := ssh.Dial("tcp", hostAddr, sshConfig)
@@ -315,7 +315,6 @@ func connectWithKey(config *Config) (*ssh.Client, error) {
 
 	return client, nil
 }
-
 
 func main() {
 	config := configure()
