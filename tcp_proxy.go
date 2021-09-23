@@ -9,8 +9,8 @@ import (
 	"net"
 	"sync"
 
-	"golang.org/x/crypto/ssh"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 )
 
 // TCPProxy is a proxy for TCP connections. It implements the Proxy interface to
