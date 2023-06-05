@@ -1,11 +1,11 @@
 module github.com/Shimmur/shipspotter
 
-go 1.17
+go 1.20
 
 require (
 	github.com/fsouza/go-dockerclient v1.3.5
 	github.com/sirupsen/logrus v1.3.0
-	golang.org/x/crypto v0.0.0-20190122013713-64072686203f
+	golang.org/x/crypto v0.9.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
@@ -26,5 +26,6 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/opencontainers/runc v1.0.0-rc6.0.20181203215513-96ec2177ae84 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
-	golang.org/x/sys v0.0.0-20190122071731-054c452bb702 // indirect
+	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/term v0.8.0 // indirect
 )
