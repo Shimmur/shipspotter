@@ -16,7 +16,7 @@ Installation
 ------------
 
  * Binaries: [On the releases page](https://github.com/Shimmur/shipspotter/releases)
- * From Source: `go get github.com/Shimmur/shipspotter`
+ * From Source: `go install github.com/Shimmur/shipspotter@latest`
 
 Basic Usage
 -----------
