@@ -150,13 +150,34 @@ func findContainerByID(client *docker.Client, id string) (*docker.APIContainers,
 	return nil, fmt.Errorf("Unable to match container ID: %s", id)
 }
 
+// fallback if findIPForContainer's container.NetworkSettings.IPAddress is empty
+func findIPInNetworks(networks map[string]docker.ContainerNetwork) (string, error) {
+	var ip string
+	for _, network := range networks {
+		ip = network.IPAddress
+	}
+	if ip == "" {
+		return "", fmt.Errorf("Unable to find Container IP in NetworkSettings")
+	}
+	return ip, nil
+}
+
 func findIPForContainer(client *docker.Client, cntnr *docker.APIContainers) (string, error) {
 	container, err := client.InspectContainer(cntnr.ID)
 	if err != nil {
 		return "", fmt.Errorf("Unable to inspect container: %s", err)
 	}
 
-	ip := container.NetworkSettings.IPAddress
+	var ip string
+	if container.NetworkSettings.IPAddress == "" {
+		ipFromNetworks, err := findIPInNetworks(container.NetworkSettings.Networks)
+		if err != nil {
+			log.Fatal(err)
+		}
+		ip = ipFromNetworks
+	} else {
+		ip = container.NetworkSettings.IPAddress
+	}
 	log.Infof("Container IP address: %s", ip)
 
 	return ip, nil
