@@ -170,11 +170,11 @@ func findIPForContainer(client *docker.Client, cntnr *docker.APIContainers) (str
 
 	var ip string
 	if container.NetworkSettings.IPAddress == "" {
-		ipFromNetworkSettings, err := findIPInNetworks(container.NetworkSettings.Networks)
+		ipFromNetworks, err := findIPInNetworks(container.NetworkSettings.Networks)
 		if err != nil {
 			log.Fatal(err)
 		}
-		ip = ipFromNetworkSettings
+		ip = ipFromNetworks
 	} else {
 		ip = container.NetworkSettings.IPAddress
 	}
